@@ -81,10 +81,12 @@ class McpBridgeService(private val project: Project) : Disposable {
 
     // ---- tool discovery ----------------------------------------------------
 
+    private data class ToolArg(val description: String, val typeName: String)
+
     private data class DiscoveredTool(
         val name: String,
         val description: String,
-        val arguments: Map<String, String>,
+        val arguments: Map<String, ToolArg>,
         val rawTool: Any,
     )
 
@@ -98,7 +100,7 @@ class McpBridgeService(private val project: Project) : Disposable {
         } catch (e: Exception) {
             log.warn("Failed to enumerate tool providers", e)
         }
-        return result
+        return result.filter { it.name in ANDROID_TOOLS }
     }
 
     private fun extractFromProvider(provider: Any): List<DiscoveredTool> {
@@ -131,13 +133,14 @@ class McpBridgeService(private val project: Project) : Disposable {
             }
         }
 
-        val args = mutableMapOf<String, String>()
+        val args = mutableMapOf<String, ToolArg>()
         runCatching {
             val toolArgs = invoke(tool, "getToolArguments") as? Map<*, *>
             toolArgs?.forEach { (param, annotation) ->
                 val paramName = invoke(param!!, "getName") as? String ?: return@forEach
                 val argDesc = invoke(annotation!!, "description") as? String ?: ""
-                args[paramName] = argDesc
+                val typeName = invoke(param, "getType")?.toString() ?: "String"
+                args[paramName] = ToolArg(argDesc, typeName)
             }
         }
 
@@ -169,10 +172,16 @@ class McpBridgeService(private val project: Project) : Disposable {
     private fun rebuildTools(server: Server) {
         for (tool in cachedTools) {
             val props = buildJsonObject {
-                for ((argName, argDesc) in tool.arguments) {
+                for ((argName, arg) in tool.arguments) {
                     put(argName, buildJsonObject {
-                        put("type", "string")
-                        if (argDesc.isNotEmpty()) put("description", argDesc)
+                        val isListType = arg.typeName.contains("List") || arg.typeName.contains("Collection")
+                        if (isListType) {
+                            put("type", "array")
+                            put("items", buildJsonObject { put("type", "string") })
+                        } else {
+                            put("type", "string")
+                        }
+                        if (arg.description.isNotEmpty()) put("description", arg.description)
                     })
                 }
             }
@@ -196,23 +205,31 @@ class McpBridgeService(private val project: Project) : Disposable {
     private suspend fun invokeTool(tool: DiscoveredTool, arguments: JsonObject): String {
         val raw = tool.rawTool
 
-        // Create a minimal InvocationContext via dynamic proxy
+        // Create a minimal InvocationContext via dynamic proxy.
+        // Returns safe defaults for all methods based on return type.
         val invCtxClass = Class.forName("com.google.aiplugin.agents.InvocationContext")
         val invocationContext = java.lang.reflect.Proxy.newProxyInstance(
             invCtxClass.classLoader,
             arrayOf(invCtxClass),
-        ) { _, method, _ ->
+        ) { proxy, method, _ ->
             when (method.name) {
                 "getProject" -> project
-                "getSessionId" -> "mcp-bridge-${System.currentTimeMillis()}"
+                "getSessionId" -> "mcp-bridge"
+                "getAgentTaskId" -> "mcp"
                 "isSubAgent" -> false
                 "isAgentStopped" -> false
-                "getChanges" -> emptyList<Any>()
-                "getImageAttachments" -> emptyList<Any>()
-                "getAgentTaskId" -> "mcp"
                 "stopAgent" -> Unit
+                "getChanges", "getImageAttachments" -> emptyList<Any>()
+                "getGetFilesWithRecentlyRevertedChanges" -> ({ emptySet<Any>() } as () -> Set<Any>)
+                "getTokenUsageReporter" -> ({ _: Long -> } as (Long) -> Unit)
                 "toString" -> "McpBridgeInvocationContext"
-                else -> null
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> (proxy === (if (method.parameterCount > 0) null else null))
+                "getPermissions" -> permissionCheckerProxy()
+                "getSessionStorage", "getRootSessionStorage" -> proxyInterface("com.google.aiplugin.agents.SessionStorage")
+                "getDocumentTracker" -> proxyInterface("com.google.studiobot.agentsdk.io.AgentDocumentTracker")
+                "makeSubAgentContext", "withPermissions" -> proxy // return self
+                else -> defaultForReturnType(method.returnType)
             }
         }
 
@@ -229,7 +246,11 @@ class McpBridgeService(private val project: Project) : Disposable {
         // FunctionCall(name, args, tool=null, toolHandler=null, metadata=null, thoughtSignature=null)
         val functionCallClass = Class.forName("com.android.tools.idea.studiobot.Content\$FunctionCall")
         val argsMap: Map<String, Any> = arguments.entries.associate { (k, v) ->
-            k to ((v as? JsonPrimitive)?.content ?: v.toString())
+            k to when (v) {
+                is JsonPrimitive -> v.content
+                is JsonArray -> v.map { elem -> (elem as? JsonPrimitive)?.content ?: elem.toString() }
+                else -> v.toString()
+            }
         }
         val functionCall = functionCallClass.declaredConstructors
             .first { it.parameterCount == 8 } // default constructor
@@ -248,6 +269,89 @@ class McpBridgeService(private val project: Project) : Disposable {
         return invoke(response, "text") as? String
             ?: invoke(response, "getStatus") as? String
             ?: response.toString()
+    }
+
+    // ---- proxy helpers -----------------------------------------------------
+
+    /** Classloader that can find Gemini plugin classes. Resolved lazily from a discovered tool. */
+    private val geminiClassLoader: ClassLoader by lazy {
+        cachedTools.firstOrNull()?.rawTool?.javaClass?.classLoader ?: javaClass.classLoader
+    }
+
+    /** Create a real PermissionChecker that always approves (never blocks). */
+    private fun permissionCheckerProxy(): Any? {
+        return runCatching {
+            val cl = geminiClassLoader
+
+            // Get PermissionDecision.APPROVED
+            val decisionClass = Class.forName("com.google.studiobot.agentsdk.permissions.PermissionDecision", true, cl)
+            val approved = decisionClass.getDeclaredField("APPROVED").also { it.isAccessible = true }.get(null)
+
+            // Create PermissionPolicy proxy that always returns APPROVED
+            val policyClass = Class.forName("com.google.studiobot.agentsdk.permissions.PermissionPolicy", true, cl)
+            val policy = java.lang.reflect.Proxy.newProxyInstance(cl, arrayOf(policyClass)) { _, method, _ ->
+                when {
+                    method.returnType.name.contains("PermissionDecision") -> approved
+                    else -> null
+                }
+            }
+
+            // PermissionSettings(idToState, parent, policy, project) — use default constructor
+            val settingsClass = Class.forName("com.google.studiobot.agentsdk.permissions.PermissionSettings", true, cl)
+            val settings = settingsClass.declaredConstructors
+                .first { it.parameterCount >= 5 } // default constructor with mask
+                .also { it.isAccessible = true }
+                .newInstance(emptyMap<String, Any>(), null, policy, project, 0b0000, null)
+
+            // PermissionChecker(project, settings)
+            val checkerClass = Class.forName("com.google.studiobot.agentsdk.permissions.PermissionChecker", true, cl)
+            checkerClass.declaredConstructors
+                .first { it.parameterCount == 2 }
+                .also { it.isAccessible = true }
+                .newInstance(project, settings)
+        }.getOrElse { e ->
+            log.warn("Failed to create PermissionChecker", e)
+            null
+        }
+    }
+
+    /** Create a dynamic proxy for an interface that returns safe defaults for all methods. */
+    private fun proxyInterface(className: String): Any? {
+        return runCatching {
+            val cls = Class.forName(className, true, geminiClassLoader)
+            java.lang.reflect.Proxy.newProxyInstance(cls.classLoader, arrayOf(cls)) { proxy, method, args ->
+                when (method.name) {
+                    "toString" -> "McpBridgeProxy($className)"
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "equals" -> proxy === args?.firstOrNull()
+                    else -> defaultForReturnType(method.returnType)
+                }
+            }
+        }.getOrNull()
+    }
+
+    private fun defaultForReturnType(type: Class<*>): Any? = when {
+        type == Boolean::class.javaPrimitiveType || type == Boolean::class.javaObjectType -> false
+        type == Int::class.javaPrimitiveType || type == Int::class.javaObjectType -> 0
+        type == Long::class.javaPrimitiveType || type == Long::class.javaObjectType -> 0L
+        type == Float::class.javaPrimitiveType -> 0f
+        type == Double::class.javaPrimitiveType -> 0.0
+        type == Void.TYPE -> null
+        type == String::class.java -> ""
+        List::class.java.isAssignableFrom(type) -> emptyList<Any>()
+        Set::class.java.isAssignableFrom(type) -> emptySet<Any>()
+        Map::class.java.isAssignableFrom(type) -> emptyMap<Any, Any>()
+        type.isInterface -> runCatching {
+            java.lang.reflect.Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { p, m, a ->
+                when (m.name) {
+                    "toString" -> "McpProxy(${type.simpleName})"
+                    "hashCode" -> System.identityHashCode(p)
+                    "equals" -> p === a?.firstOrNull()
+                    else -> defaultForReturnType(m.returnType)
+                }
+            }
+        }.getOrNull()
+        else -> null
     }
 
     // ---- reflection helpers ------------------------------------------------
@@ -311,5 +415,21 @@ class McpBridgeService(private val project: Project) : Disposable {
     companion object {
         fun getInstance(project: Project): McpBridgeService =
             project.getService(McpBridgeService::class.java)
+
+        /** Android-specific tools — the ones that can't be replicated outside the IDE. */
+        private val ANDROID_TOOLS = setOf(
+            // Device
+            "read_logcat", "take_screenshot", "ui_state", "adb_shell_input",
+            // Build & Gradle
+            "gradle_sync", "gradle_build", "deploy", "version_lookup",
+            "get_gradle_artifact_from_file", "get_assemble_task_for_artifact",
+            "get_artifact_consumers", "get_build_file_location",
+            "get_test_task_for_artifact", "get_top_level_sub_projects",
+            "get_test_artifacts_for_sub_project", "get_source_folders_for_artifact",
+            // Compose
+            "render_compose_preview",
+            // Android docs & code search
+            "code_search", "search_android_docs", "fetch_android_docs",
+        )
     }
 }
