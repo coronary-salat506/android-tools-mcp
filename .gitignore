@@ -5,3 +5,4 @@ build/
 out/
 local.properties
 .intellijPlatform/
+gradle/wrapper/gradle-wrapper.jar

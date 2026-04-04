@@ -12,6 +12,8 @@ repositories {
     }
 }
 
+version = providers.gradleProperty("plugin.version").get()
+
 val localProps = Properties().apply {
     val f = file("local.properties")
     if (f.exists()) load(f.inputStream())
